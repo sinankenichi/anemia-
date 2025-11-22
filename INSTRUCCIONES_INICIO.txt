@@ -1,0 +1,108 @@
+================================================================================
+INSTRUCCIONES PARA INICIAR EL PROYECTO DE CUESTIONARIO DE ANEMIA
+================================================================================
+
+1. BASE DE DATOS (MySQL)
+-------------------------
+Paso 1: Abrir XAMPP/WAMP/MySQL Workbench
+Paso 2: Activar el servicio MySQL (botón "Start")
+Paso 3: Ejecutar el script SQL:
+   - Abrir MySQL Workbench o phpMyAdmin
+   - Ejecutar: D:\Prototipos\prueba1\Prueba nueva noviembre\bd\script_cuestionario.sql
+   - Esto creará la tabla "cuestionarios" en la base de datos "login_db"
+
+Verificación:
+- Debe aparecer la tabla "cuestionarios" en la base de datos "login_db"
+- La tabla debe tener las columnas: cuestionario_id, pregunta1-pregunta10, fecha_creacion
+
+2. API (Node.js)
+-----------------
+Paso 1: Abrir terminal/PowerShell
+Paso 2: Navegar a la carpeta de la API:
+   cd "D:\Prototipos\prueba1\Prueba nueva noviembre\api\Api"
+
+Paso 3: Instalar dependencias (solo la primera vez):
+   npm install
+
+Paso 4: Iniciar la API:
+   npm run dev
+   
+   O si no funciona:
+   node index.js
+
+Verificación:
+- Debe aparecer: "Servidor corriendo en el puerto: 3000"
+- Debe aparecer: "Conexion exitosa a base de datos: login_db"
+- Abrir navegador: http://localhost:3000
+- Debe mostrar: "Bienvenido a mi API de Login Simplificada"
+
+3. APP ANDROID
+---------------
+Paso 1: Abrir Android Studio
+Paso 2: Abrir el proyecto:
+   D:\Prototipos\prueba1\Prueba nueva noviembre\android
+
+Paso 3: Sincronizar Gradle (Sync Now)
+Paso 4: Obtener la IP local de tu PC:
+   - En Windows: Abrir CMD y ejecutar: ipconfig
+   - Buscar "IPv4 Address" (ejemplo: 192.168.100.5)
+   
+Paso 5: Actualizar la IP en WebServices.kt si es necesario:
+   - Archivo: android\app\src\main\java\com\ejemplo\salud\servicio\WebServices.kt
+   - Cambiar BASE_URL si tu IP es diferente
+
+Paso 6: Conectar dispositivo físico o iniciar emulador
+Paso 7: Ejecutar la app (Run 'app' o Shift+F10)
+
+4. FLUJO DE LA APLICACIÓN
+--------------------------
+1. Al abrir la app, aparece SplashActivity con la imagen de inicio
+2. Presionar el botón "Empecemos"
+3. Animación de transición
+4. Aparece CuestionarioActivity con 10 preguntas
+5. Seleccionar respuesta en cada pregunta (dropdown se abre por encima)
+6. Presionar "Enviar" al final
+7. Los datos se envían a la API
+8. La API guarda en la base de datos
+
+5. VERIFICACIÓN DE CONEXIÓN
+----------------------------
+BD -> API:
+- Verificar que MySQL esté corriendo
+- Verificar que la API muestre "Conexion exitosa"
+
+API -> APP:
+- Verificar que la API esté corriendo en puerto 3000
+- Verificar que la IP en la app sea correcta
+- Verificar que PC y dispositivo estén en la misma red WiFi
+
+6. TROUBLESHOOTING
+------------------
+Error: "No se puede conectar a la API"
+- Verificar que la API esté corriendo
+- Verificar la IP en WebServices.kt
+- Verificar que el firewall permita conexiones en puerto 3000
+
+Error: "Error al guardar cuestionario"
+- Verificar que la tabla "cuestionarios" exista en la BD
+- Verificar que la conexión a MySQL funcione
+- Revisar los logs de la API
+
+Error: "No se puede compilar la app"
+- Sincronizar Gradle nuevamente
+- Limpiar proyecto: Build -> Clean Project
+- Reconstruir: Build -> Rebuild Project
+
+================================================================================
+COMANDO RÁPIDO PARA INICIAR LA API:
+================================================================================
+
+cd "D:\Prototipos\prueba1\Prueba nueva noviembre\api\Api"
+npm run dev
+
+O:
+
+node index.js
+
+================================================================================
+

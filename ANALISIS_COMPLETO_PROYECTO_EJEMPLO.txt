@@ -1,0 +1,825 @@
+================================================================================
+ANALISIS COMPLETO DEL PROYECTO DE EJEMPLO
+Sistema de Gestión Médica: BD + API + APP Android
+================================================================================
+
+FECHA DE ANALISIS: $(Get-Date -Format "yyyy-MM-dd")
+PROYECTO: Sistema de gestión médica con login, fichas médicas, mensajes y citas
+
+================================================================================
+1. ESTRUCTURA GENERAL DEL PROYECTO
+================================================================================
+
+El proyecto está dividido en 3 componentes principales:
+
+1. BD (Base de Datos MySQL)
+   - Ubicación: ejemplo\Bd\
+   - Archivos: script.sql, Prubas.sql
+   - Motor: MySQL/MariaDB
+   - Puerto: 3306 (por defecto)
+   - Usuario: root
+   - Contraseña: 123456789
+
+2. API (Backend Node.js/Express)
+   - Ubicación: ejemplo\Api\
+   - Archivo principal: index.js
+   - Puerto: 3000
+   - Framework: Express.js
+   - Base de datos: MySQL2
+
+3. APP (Aplicación Android)
+   - Ubicación: ejemplo\App\Prototipo\
+   - Lenguaje: Kotlin
+   - Framework: Android SDK
+   - API mínima: 24
+   - Target SDK: 35
+   - Package: com.ejemplo.prototipo
+
+================================================================================
+2. BASE DE DATOS (BD) - FLUJO Y ESTRUCTURA
+================================================================================
+
+2.1. ACTIVACION DE LA BASE DE DATOS
+------------------------------------
+- Abrir XAMPP, WAMP, o MySQL Workbench
+- Activar el servicio MySQL (botón "Start" en XAMPP)
+- Verificar que el puerto 3306 esté activo
+- La base de datos se crea ejecutando el script.sql
+
+2.2. ESTRUCTURA DE LA BASE DE DATOS
+------------------------------------
+
+Nombre de la base de datos: login_db
+
+TABLAS PRINCIPALES:
+
+1. roles
+   - rol_id (INT, PK, AUTO_INCREMENT)
+   - rol_nombre (VARCHAR(50))
+   - Descripción: Almacena los roles del sistema (1=médico, 2=paciente)
+
+2. usuarios
+   - usu_id (INT, PK, AUTO_INCREMENT)
+   - usu_email (VARCHAR(100), UNIQUE)
+   - usu_password (VARCHAR(255))
+   - usu_nombre (VARCHAR(100))
+   - rol_id (INT, FK -> roles.rol_id)
+   - Descripción: Usuarios del sistema (médicos y pacientes)
+
+3. ficha_medica
+   - ficha_id (INT, PK, AUTO_INCREMENT)
+   - usu_id (INT, FK -> usuarios.usu_id)
+   - edad (INT)
+   - celular (VARCHAR(20))
+   - malestares (TEXT)
+   - diagnostico (TEXT)
+   - tratamiento (TEXT)
+   - Descripción: Información médica de los pacientes
+
+4. asignacion_medico_paciente
+   - asignacion_id (INT, PK, AUTO_INCREMENT)
+   - medico_id (INT, FK -> usuarios.usu_id)
+   - paciente_id (INT, FK -> usuarios.usu_id)
+   - Descripción: Relación muchos a muchos entre médicos y pacientes
+
+5. mensajes
+   - mensaje_id (INT, PK, AUTO_INCREMENT)
+   - paciente_id (INT, FK -> usuarios.usu_id)
+   - medico_id (INT, FK -> usuarios.usu_id)
+   - asunto (VARCHAR(255))
+   - contenido (TEXT)
+   - fecha_envio (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+   - leido (BOOLEAN, DEFAULT FALSE)
+   - Descripción: Mensajes que los pacientes envían a los médicos
+
+6. recomendaciones
+   - recomendacion_id (INT, PK, AUTO_INCREMENT)
+   - mensaje_id (INT, FK -> mensajes.mensaje_id)
+   - medico_id (INT, FK -> usuarios.usu_id)
+   - paciente_id (INT, FK -> usuarios.usu_id)
+   - contenido (TEXT)
+   - fecha (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+   - Descripción: Recomendaciones que los médicos dan a los mensajes
+
+7. citas
+   - cita_id (INT, PK, AUTO_INCREMENT)
+   - mensaje_id (INT, FK -> mensajes.mensaje_id)
+   - medico_id (INT, FK -> usuarios.usu_id)
+   - paciente_id (INT, FK -> usuarios.usu_id)
+   - fecha_cita (DATETIME)
+   - motivo (TEXT)
+   - estado (VARCHAR(50), DEFAULT 'pendiente')
+   - Descripción: Citas programadas entre médicos y pacientes
+
+8. atencion_medica
+   - atencion_id (INT, PK, AUTO_INCREMENT)
+   - medico_id (INT, FK -> usuarios.usu_id)
+   - paciente_id (INT, FK -> usuarios.usu_id)
+   - fecha_atencion (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+   - malestares (TEXT)
+   - diagnostico (TEXT)
+   - tratamiento (TEXT)
+   - Descripción: Registro de atenciones médicas realizadas
+
+9. historial_paciente
+   - historial_id (INT, PK, AUTO_INCREMENT)
+   - cita_id (INT, FK -> citas.cita_id)
+   - fecha_consulta (DATETIME)
+   - diagnostico (TEXT)
+   - malestar (TEXT)
+   - tratamiento (TEXT)
+   - Descripción: Historial completo de consultas del paciente
+
+2.3. DATOS INICIALES
+---------------------
+El script.sql incluye:
+- 2 roles (médico=1, paciente=2)
+- 10 médicos predefinidos (medico1@medico.com a medico10@medico.com, password: 123456)
+- 15 pacientes predefinidos (paciente1@paciente.com a paciente15@paciente.com, password: 123456)
+- 15 fichas médicas asociadas a los pacientes
+- Asignaciones médico-paciente (3 pacientes por médico)
+
+2.4. FLUJO DE DATOS EN LA BD
+-----------------------------
+1. Usuario se registra/login -> tabla usuarios
+2. Si es paciente, se crea/actualiza -> tabla ficha_medica
+3. Médico asigna pacientes -> tabla asignacion_medico_paciente
+4. Paciente envía mensaje -> tabla mensajes
+5. Médico responde con recomendación -> tabla recomendaciones
+6. Médico programa cita -> tabla citas
+7. Médico registra atención -> tabla atencion_medica + historial_paciente
+
+================================================================================
+3. API (Backend Node.js/Express) - FLUJO Y ESTRUCTURA
+================================================================================
+
+3.1. ACTIVACION DE LA API
+--------------------------
+- Abrir terminal en la carpeta ejemplo\Api\
+- Ejecutar: npm install (si es primera vez)
+- Ejecutar: npm run dev (con nodemon para auto-reload)
+  O: node index.js (sin auto-reload)
+- La API se activa en: http://localhost:3000
+- Verificar mensaje: "Servidor corriendo en el puerto: 3000"
+- Verificar mensaje: "Conexion exitosa a base de datos: login_db"
+
+3.2. DEPENDENCIAS INSTALADAS (package.json)
+---------------------------------------------
+Dependencias de producción:
+- express: ^5.1.0 (Framework web para Node.js)
+- mysql2: ^3.14.1 (Driver para conectar con MySQL)
+- cors: ^2.8.5 (Permite peticiones desde otros orígenes)
+
+Dependencias de desarrollo:
+- body-parser: ^2.2.0 (Parsea el cuerpo de las peticiones HTTP)
+- nodemon: ^3.1.10 (Reinicia automáticamente el servidor al cambiar archivos)
+
+3.3. CONFIGURACION DE CONEXION A BD
+------------------------------------
+En index.js, líneas 12-18:
+const conexion = mysql.createConnection({
+  host: "localhost",
+  database: "login_db",
+  port: "3306",
+  user: "root",
+  password: "123456789",
+});
+
+IMPORTANTE: Esta configuración debe coincidir con tu instalación de MySQL.
+
+3.4. MIDDLEWARES CONFIGURADOS
+------------------------------
+- cors(): Permite que la app Android haga peticiones
+- bodyParser.json(): Convierte el cuerpo de las peticiones a JSON
+
+3.5. ENDPOINTS DISPONIBLES (Rutas de la API)
+---------------------------------------------
+
+A. AUTENTICACION Y USUARIOS:
+   GET  /                    -> Mensaje de bienvenida
+   POST /login               -> Autenticación de usuario
+   GET  /roles               -> Lista de roles
+   GET  /usuarios            -> Lista de usuarios
+
+B. FICHA MEDICA:
+   GET  /ficha-medica/:usu_id        -> Obtener ficha médica de un usuario
+   PUT  /ficha-medica/:usu_id        -> Actualizar ficha médica
+
+C. MEDICOS Y PACIENTES:
+   GET  /medicos                      -> Lista de médicos disponibles
+   GET  /medico/:medico_id/pacientes   -> Pacientes asignados a un médico
+   GET  /paciente/:paciente_id/medicos -> Médicos asignados a un paciente
+   GET  /paciente/:paciente_id/medicos/count -> Contar médicos asignados
+   POST /paciente/:paciente_id/medico/:medico_id -> Asignar médico a paciente
+
+D. ATENCIONES MEDICAS:
+   POST /atencion/nueva      -> Registrar atención a paciente nuevo
+   POST /atencion/existente  -> Registrar atención a paciente existente
+
+E. MENSAJES:
+   POST /mensaje                    -> Enviar mensaje de paciente a médico
+   GET  /medico/:medico_id/mensajes -> Mensajes recibidos por un médico
+   GET  /mensaje/:mensaje_id        -> Detalle de un mensaje específico
+
+F. RECOMENDACIONES:
+   POST /recomendacion -> Médico envía recomendación a un mensaje
+
+G. CITAS:
+   POST /cita                    -> Programar una cita
+   GET  /paciente/:paciente_id/citas -> Citas de un paciente
+
+H. HISTORIAL:
+   GET  /paciente/:paciente_id/ficha     -> Ficha completa del paciente
+   GET  /paciente/:paciente_id/historial -> Historial de consultas
+
+3.6. FLUJO DE PROCESAMIENTO EN LA API
+--------------------------------------
+1. Cliente (App Android) hace petición HTTP
+2. Express recibe la petición
+3. CORS permite la petición
+4. BodyParser convierte JSON a objeto
+5. Se ejecuta la función del endpoint
+6. Se hace consulta SQL a MySQL
+7. Se procesa la respuesta
+8. Se envía respuesta JSON al cliente
+
+3.7. TRANSACCIONES EN LA API
+-----------------------------
+Los endpoints /atencion/nueva y /atencion/existente usan transacciones SQL:
+- beginTransaction(): Inicia transacción
+- Múltiples operaciones SQL
+- commit(): Confirma todas las operaciones
+- rollback(): Revierte si hay error
+
+Ejemplo en /atencion/nueva:
+1. Crear usuario (paciente)
+2. Crear ficha médica
+3. Crear cita
+4. Actualizar ficha médica
+5. Registrar atención médica
+6. Registrar en historial
+7. Asignar paciente al médico
+
+Si cualquier paso falla, se revierte todo (rollback).
+
+================================================================================
+4. APP ANDROID - FLUJO Y ESTRUCTURA
+================================================================================
+
+4.1. ACTIVACION DE LA APP
+--------------------------
+- Abrir Android Studio
+- Abrir el proyecto: ejemplo\App\Prototipo\
+- Sincronizar Gradle (Sync Now)
+- Conectar dispositivo físico o emulador
+- Ejecutar: Run 'app' (Shift+F10)
+- La app se instala y ejecuta en el dispositivo
+
+4.2. DEPENDENCIAS INSTALADAS (build.gradle.kts)
+-------------------------------------------------
+Librerías principales (app/build.gradle.kts):
+
+Core Android:
+- androidx.core:core-ktx:1.16.0
+- androidx.appcompat:appcompat:1.7.0
+- com.google.android.material:material:1.12.0
+- androidx.activity:activity:1.10.1
+- androidx.constraintlayout:constraintlayout:2.2.1
+
+Red y JSON:
+- com.squareup.retrofit2:retrofit:2.11.0
+- com.squareup.retrofit2:converter-gson:2.11.0
+- com.google.code.gson:gson:2.13.1
+
+Corrutinas:
+- org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2
+
+Splash Screen:
+- androidx.core:core-splashscreen:1.0.1
+
+Testing:
+- junit:junit:4.13.2
+- androidx.test.ext:junit:1.2.1
+- androidx.test.espresso:espresso-core:3.6.1
+
+4.3. CONFIGURACION DE CONEXION A LA API
+----------------------------------------
+En WebServices.kt:
+- BASE_URL por defecto: "http://192.168.100.5"
+- Puerto por defecto: 3000
+- URL completa: "http://192.168.100.5:3000"
+
+CONFIGURACION DINAMICA:
+- La app permite cambiar IP y puerto desde ConfiguracionActivity
+- Se guarda en SharedPreferences con clave "config"
+- Se lee en RetrofitClientWS.getBaseUrl()
+
+IMPORTANTE:
+- La IP debe ser la IP local de la computadora donde corre la API
+- No usar localhost o 127.0.0.1 en el dispositivo físico
+- Verificar que el dispositivo y la PC estén en la misma red WiFi
+- En AndroidManifest.xml está configurado: android:usesCleartextTraffic="true"
+  (permite HTTP sin SSL)
+
+4.4. ESTRUCTURA DE CARPETAS Y ARCHIVOS
+---------------------------------------
+app/src/main/java/com/ejemplo/prototipo/
+
+ACTIVITIES (Pantallas):
+- LoginActivity.kt              -> Pantalla de login
+- MainActivity.kt               -> Actividad principal (no usada)
+- MenuMedicoActivity.kt         -> Menú principal del médico
+- MenuPacienteActivity.kt       -> Menú principal del paciente
+- FichaMedicaPacienteActivity.kt -> Ver/editar ficha médica
+- PacientesAsignadosActivity.kt -> Lista de pacientes del médico
+- RegistrarAtencionActivity.kt   -> Registrar atención médica
+- SeleccionarMedicoActivity.kt  -> Seleccionar médico (paciente)
+- EnviarSintomasActivity.kt     -> Enviar síntomas al médico
+- RegistrosActivity.kt           -> Ver mensajes recibidos (médico)
+- DetalleReporteActivity.kt      -> Detalle de un mensaje
+- RecomendarActivity.kt         -> Enviar recomendación (médico)
+- ProgramarCitaActivity.kt      -> Programar cita (médico)
+- VerCitasActivity.kt           -> Ver citas programadas (paciente)
+- DetallePacienteActivity.kt   -> Detalle de paciente (médico)
+- HistorialPacienteActivity.kt  -> Historial de paciente
+- ConfiguracionActivity.kt      -> Configurar IP y puerto de API
+- CitasActivity.kt              -> Gestión de citas
+- MensajesActivity.kt            -> Gestión de mensajes
+
+MODELOS (model/):
+- Usuario.kt                     -> Modelo de usuario
+- LoginResponse.kt               -> Respuesta de login
+- FichaMedicaRequest.kt          -> Request para ficha médica
+- FichaMedicaResponse.kt         -> Response de ficha médica
+- PacienteAsignado.kt            -> Modelo de paciente asignado
+- AtencionRequest.kt             -> Request de atención
+- Medico.kt                      -> Modelo de médico
+- Mensaje.kt                     -> Modelo de mensaje
+- MensajeResponse.kt            -> Response de mensaje
+- DetalleMensajeResponse.kt      -> Detalle de mensaje
+- RecomendacionRequest.kt        -> Request de recomendación
+- CitaRequest.kt                 -> Request de cita
+- CitaResponse.kt               -> Response de cita
+- FichaPacienteResponse.kt       -> Ficha completa de paciente
+- HistorialPacienteResponse.kt  -> Historial de paciente
+- RegistroMensaje.kt             -> Registro de mensaje
+
+ADAPTERS (adapters/):
+- PacientesAsignadosAdapter.kt   -> Adapter para lista de pacientes
+- RegistrosAdapter.kt             -> Adapter para lista de mensajes
+- MedicosAdapter.kt               -> Adapter para lista de médicos
+- HistorialAdapter.kt             -> Adapter para historial
+- VerCitasAdapter.kt              -> Adapter para citas
+
+SERVICIO (servicio/):
+- WebServices.kt                 -> Interface y cliente Retrofit
+
+4.5. PATRON DE DISEÑO: VIEW BINDING
+-------------------------------------
+El profesor usa View Binding en todas las actividades:
+
+1. En build.gradle.kts:
+   buildFeatures {
+       viewBinding = true
+   }
+
+2. En cada Activity:
+   private lateinit var binding: ActivityNombreBinding
+   
+   override fun onCreate(savedInstanceState: Bundle?) {
+       binding = ActivityNombreBinding.inflate(layoutInflater)
+       setContentView(binding.root)
+   }
+
+3. Acceso a vistas:
+   binding.btnIngresar.setOnClickListener { ... }
+   binding.etUsuario.text.toString()
+
+VENTAJAS:
+- Type-safe: No hay errores de casting
+- Null-safe: No hay NullPointerException
+- Más rápido que findViewById
+- Código más limpio
+
+4.6. PATRON DE DISEÑO: RETROFIT + COROUTINAS
+---------------------------------------------
+El profesor usa Retrofit para las llamadas HTTP y Corrutinas para manejar asincronía:
+
+1. Interface WebServices (en WebServices.kt):
+   interface WebServices {
+       @POST("/login")
+       suspend fun login(@Body usuario: Usuario): Response<LoginResponse>
+   }
+
+2. Cliente Retrofit (en WebServices.kt):
+   object RetrofitClientWS {
+       fun getWebService(context: Context): WebServices {
+           return Retrofit.Builder()
+               .baseUrl(getBaseUrl(context))
+               .addConverterFactory(GsonConverterFactory.create())
+               .build()
+               .create(WebServices::class.java)
+       }
+   }
+
+3. Uso en Activity con Corrutinas:
+   lifecycleScope.launch {
+       try {
+           val response = RetrofitClientWS.getWebService(this@LoginActivity).login(usuario)
+           if (response.isSuccessful) {
+               // Procesar respuesta
+           }
+       } catch (e: Exception) {
+           // Manejar error
+       }
+   }
+
+VENTAJAS:
+- Código asíncrono sin callbacks anidados
+- Manejo de errores más simple
+- Integración con el ciclo de vida de la Activity
+
+4.7. CREACION DE OBJETOS Y MODELOS
+------------------------------------
+El profesor usa data classes de Kotlin para los modelos:
+
+Ejemplo (Usuario.kt):
+data class Usuario(
+    val usu_id: Int,
+    val usu_email: String,
+    val usu_password: String,
+    val usu_nombre: String,
+    val rol_id: Int
+)
+
+CARACTERISTICAS:
+- data class: Genera automáticamente equals(), hashCode(), toString(), copy()
+- Propiedades inmutables (val): No se pueden modificar después de crear
+- Nombres en español: Sigue convención del proyecto
+- Serialización automática: Gson convierte a/desde JSON
+
+4.8. ESTILOS Y RECURSOS
+-------------------------
+COLORES (res/values/colors.xml):
+- light_blue: #7DE9FC (Color principal de botones)
+- primary_blue: #7DE9FC
+- button_blue: #7DE9FC
+- celeste: #00B6FF
+- button_celeste: #00B6FF
+- purple_700: #673AB7
+- button_purple: #6C22F5
+- card_background_purple: #F4ECFF
+- card_background_celeste: #E3F3FB
+- background_light_purple: #FAF4FF
+- gray_light: #F6F6F6
+- gray_medium: #BDBDBD
+- text_black: #222222
+- text_gray: #6c757d
+
+USO DE COLORES EN CÓDIGO:
+binding.btnIngresar.setBackgroundColor(resources.getColor(R.color.light_blue))
+binding.btnIngresar.setTextColor(resources.getColor(R.color.text_black))
+
+4.9. NAVEGACION ENTRE ACTIVITIES
+---------------------------------
+El profesor usa Intents para navegar:
+
+1. Pasar datos:
+   val intent = Intent(this, MenuMedicoActivity::class.java)
+   intent.putExtra("nombre", nombre)
+   intent.putExtra("rol", rol)
+   intent.putExtra("usu_id", usuId)
+   startActivity(intent)
+
+2. Recibir datos:
+   val nombre = intent.getStringExtra("nombre") ?: "Doctor"
+   val usuId = intent.getIntExtra("usu_id", -1)
+
+3. Cerrar Activity:
+   finish()
+
+4.10. ALMACENAMIENTO LOCAL (SharedPreferences)
+----------------------------------------------
+Para guardar configuración y datos de sesión:
+
+GUARDAR:
+getSharedPreferences("config", Context.MODE_PRIVATE)
+    .edit()
+    .putString("ip", ip)
+    .putString("puerto", puerto)
+    .apply()
+
+LEER:
+val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
+val ip = prefs.getString("ip", "192.168.100.5")
+
+4.11. FLUJO DE LA APP ANDROID
+-------------------------------
+1. Usuario abre la app -> LoginActivity
+2. Ingresa email y password -> Hace POST /login
+3. API valida credenciales -> Retorna usuario y rol
+4. Si rol = "médico" -> Navega a MenuMedicoActivity
+5. Si rol = "paciente" -> Navega a MenuPacienteActivity
+
+FLUJO MÉDICO:
+- Ver pacientes asignados -> GET /medico/:id/pacientes
+- Registrar atención -> POST /atencion/nueva o /atencion/existente
+- Ver mensajes -> GET /medico/:id/mensajes
+- Enviar recomendación -> POST /recomendacion
+- Programar cita -> POST /cita
+
+FLUJO PACIENTE:
+- Ver ficha médica -> GET /ficha-medica/:id
+- Seleccionar médico -> GET /medicos
+- Enviar síntomas -> POST /mensaje
+- Ver citas -> GET /paciente/:id/citas
+- Ver historial -> GET /paciente/:id/historial
+
+================================================================================
+5. CONEXION ENTRE LOS TRES COMPONENTES
+================================================================================
+
+5.1. FLUJO COMPLETO DE UNA OPERACION
+-------------------------------------
+Ejemplo: Login de usuario
+
+1. APP ANDROID:
+   - Usuario ingresa email y password
+   - Se crea objeto Usuario(0, email, password, "", 0)
+   - Se hace POST a http://192.168.100.5:3000/login
+   - Retrofit serializa el objeto a JSON
+   - Se envía petición HTTP
+
+2. API (Express):
+   - Recibe petición POST en /login
+   - BodyParser convierte JSON a objeto JavaScript
+   - Se extrae usu_email y usu_password
+   - Se hace consulta SQL: SELECT * FROM usuarios WHERE usu_email=? AND usu_password=?
+   - MySQL ejecuta la consulta
+   - Se retorna resultado
+
+3. BASE DE DATOS:
+   - MySQL busca en tabla usuarios
+   - Si encuentra, retorna el registro
+   - Si no encuentra, retorna vacío
+
+4. API (Express):
+   - Recibe resultado de MySQL
+   - Si hay resultado, crea objeto de respuesta con user y message
+   - Serializa a JSON
+   - Envía respuesta HTTP 200 con JSON
+
+5. APP ANDROID:
+   - Retrofit recibe respuesta
+   - Gson deserializa JSON a LoginResponse
+   - Se verifica si response.isSuccessful
+   - Se extrae user.rol
+   - Se navega a MenuMedicoActivity o MenuPacienteActivity
+
+5.2. CONFIGURACION DE RED
+--------------------------
+IMPORTANTE PARA QUE FUNCIONE:
+
+1. BD debe estar activa (MySQL corriendo en puerto 3306)
+2. API debe estar activa (Node.js corriendo en puerto 3000)
+3. APP debe tener la IP correcta de la PC donde corre la API
+4. PC y dispositivo Android deben estar en la misma red WiFi
+5. Firewall de Windows debe permitir conexiones en puerto 3000
+
+5.3. VERIFICACION DE CONEXION
+-------------------------------
+BD -> API:
+- En index.js, al iniciar, debe aparecer: "Conexion exitosa a base de datos: login_db"
+- Si hay error, verificar: host, puerto, usuario, contraseña, nombre de BD
+
+API -> APP:
+- Abrir navegador en PC: http://localhost:3000
+- Debe aparecer: "Bienvenido a mi API de Autenticación y Usuarios"
+- En la app, verificar que la IP sea la IP local de la PC (no localhost)
+
+APP -> API:
+- En la app, ir a Configuración (menú de 3 puntos en LoginActivity)
+- Verificar IP y puerto
+- Probar hacer login
+- Si falla, verificar que la API esté corriendo y accesible
+
+================================================================================
+6. PROCESOS ESPECIALES Y TECNICAS APLICADAS
+================================================================================
+
+6.1. TRANSACCIONES SQL
+-----------------------
+En /atencion/nueva, se usa transacción para garantizar consistencia:
+
+conexion.beginTransaction((err) => {
+    // 1. Crear usuario
+    // 2. Crear ficha médica
+    // 3. Crear cita
+    // 4. Actualizar ficha
+    // 5. Registrar atención
+    // 6. Registrar historial
+    // 7. Asignar médico
+    
+    conexion.commit((err) => {
+        // Si todo OK, confirma
+    });
+    
+    // Si hay error en cualquier paso:
+    conexion.rollback(() => {
+        // Revierte todos los cambios
+    });
+});
+
+VENTAJA: Si falla cualquier paso, no se guarda nada (atomicidad).
+
+6.2. JOINS EN SQL
+------------------
+El profesor usa JOINs para obtener datos relacionados:
+
+Ejemplo: Obtener pacientes con su ficha médica
+SELECT u.*, f.*
+FROM usuarios u
+JOIN ficha_medica f ON u.usu_id = f.usu_id
+WHERE u.rol_id = 2
+
+VENTAJA: Una sola consulta obtiene datos de múltiples tablas.
+
+6.3. PARAMETROS PREPARADOS
+---------------------------
+Para prevenir SQL Injection, se usan parámetros preparados:
+
+const query = "SELECT * FROM usuarios WHERE usu_email = ? AND usu_password = ?";
+conexion.query(query, [usu_email, usu_password], (error, rpta) => {
+    // ...
+});
+
+VENTAJA: MySQL escapa automáticamente los valores, previniendo inyección SQL.
+
+6.4. CORRUTINAS EN KOTLIN
+--------------------------
+Para operaciones asíncronas sin bloquear el hilo principal:
+
+lifecycleScope.launch {
+    try {
+        val response = withContext(Dispatchers.IO) {
+            webService.login(usuario)
+        }
+        // Actualizar UI en el hilo principal
+        if (response.isSuccessful) {
+            // ...
+        }
+    } catch (e: Exception) {
+        // Manejar error
+    }
+}
+
+VENTAJA: Código más limpio que callbacks, manejo de errores más simple.
+
+6.5. DATA BINDING Y VIEW BINDING
+---------------------------------
+View Binding para acceso type-safe a vistas:
+- binding.btnIngresar (en lugar de findViewById)
+
+VENTAJA: Menos código, más seguro, mejor rendimiento.
+
+6.6. ADAPTERS PARA LISTAS
+-------------------------
+Para mostrar listas (RecyclerView), se usan Adapters:
+
+class PacientesAsignadosAdapter(
+    private val pacientes: List<PacienteAsignado>,
+    private val onItemClick: (PacienteAsignado) -> Unit
+) : RecyclerView.Adapter<PacientesAsignadosAdapter.ViewHolder>() {
+    // ...
+}
+
+VENTAJA: Separación de responsabilidades, código reutilizable.
+
+6.7. SEPARACION DE MODELOS
+--------------------------
+Los modelos están en carpeta separada (model/):
+- Facilita mantenimiento
+- Reutilización en múltiples Activities
+- Estructura clara del proyecto
+
+6.8. SERVICIO CENTRALIZADO
+--------------------------
+WebServices.kt centraliza todas las llamadas a la API:
+- Una sola fuente de verdad para las URLs
+- Fácil cambiar la base URL
+- Reutilización en todas las Activities
+
+================================================================================
+7. CHECKLIST PARA ACTIVAR EL PROYECTO
+================================================================================
+
+7.1. BASE DE DATOS
+-------------------
+[ ] Abrir XAMPP/WAMP/MySQL Workbench
+[ ] Activar servicio MySQL (botón Start)
+[ ] Verificar que puerto 3306 esté activo
+[ ] Ejecutar script.sql en MySQL
+[ ] Verificar que se creó la BD "login_db"
+[ ] Verificar que hay datos en tabla usuarios
+
+7.2. API
+---------
+[ ] Abrir terminal en ejemplo\Api\
+[ ] Ejecutar: npm install (si es primera vez)
+[ ] Verificar package.json tiene las dependencias
+[ ] Ejecutar: npm run dev (o node index.js)
+[ ] Verificar mensaje: "Servidor corriendo en el puerto: 3000"
+[ ] Verificar mensaje: "Conexion exitosa a base de datos: login_db"
+[ ] Abrir navegador: http://localhost:3000
+[ ] Debe aparecer mensaje de bienvenida
+
+7.3. APP ANDROID
+-----------------
+[ ] Abrir Android Studio
+[ ] Abrir proyecto: ejemplo\App\Prototipo\
+[ ] Sincronizar Gradle (Sync Now)
+[ ] Verificar que no hay errores de compilación
+[ ] Conectar dispositivo físico o iniciar emulador
+[ ] Obtener IP local de la PC (ipconfig en Windows)
+[ ] En la app, ir a Configuración y poner la IP correcta
+[ ] Ejecutar app (Run 'app')
+[ ] Probar login con: medico1@medico.com / 123456
+
+7.4. VERIFICACION FINAL
+-------------------------
+[ ] Login funciona correctamente
+[ ] Médico puede ver pacientes asignados
+[ ] Médico puede registrar atención
+[ ] Paciente puede ver su ficha médica
+[ ] Paciente puede enviar mensaje
+[ ] Médico puede ver mensajes
+[ ] Médico puede programar cita
+[ ] Paciente puede ver citas
+
+================================================================================
+8. NOTAS IMPORTANTES Y RECOMENDACIONES
+================================================================================
+
+8.1. SEGURIDAD
+--------------
+- Las contraseñas están en texto plano (NO es seguro para producción)
+- No hay autenticación por tokens (sesiones)
+- No hay encriptación SSL (usa HTTP, no HTTPS)
+- Para producción, implementar: hash de contraseñas, JWT, HTTPS
+
+8.2. MEJORAS SUGERIDAS
+----------------------
+- Implementar validación de formularios más robusta
+- Agregar loading indicators durante peticiones
+- Implementar refresh (pull to refresh) en listas
+- Agregar manejo de errores más detallado
+- Implementar cache local para datos offline
+- Agregar notificaciones push
+
+8.3. ESTRUCTURA DEL CODIGO
+---------------------------
+El profesor sigue buenas prácticas:
+- Separación de responsabilidades (Activities, Models, Adapters, Services)
+- Uso de data classes para modelos
+- View Binding para acceso a vistas
+- Corrutinas para asincronía
+- Retrofit para networking
+- Nombres descriptivos en español
+
+8.4. CONVENCIONES DE NOMBRES
+-----------------------------
+- Activities: *Activity.kt
+- Models: PascalCase (Usuario.kt, LoginResponse.kt)
+- Adapters: *Adapter.kt
+- Layouts: activity_*.xml, item_*.xml
+- IDs de vistas: camelCase (btnIngresar, etUsuario)
+
+================================================================================
+9. RESUMEN DEL FLUJO COMPLETO
+================================================================================
+
+1. USUARIO INICIA SESION:
+   APP -> POST /login -> API -> SELECT usuarios -> BD -> API -> JSON -> APP
+   
+2. MEDICO REGISTRA ATENCION:
+   APP -> POST /atencion/nueva -> API -> TRANSACCION SQL -> BD -> API -> JSON -> APP
+   
+3. PACIENTE ENVIA MENSAJE:
+   APP -> POST /mensaje -> API -> INSERT mensajes -> BD -> API -> JSON -> APP
+   
+4. MEDICO VE MENSAJES:
+   APP -> GET /medico/:id/mensajes -> API -> SELECT mensajes -> BD -> API -> JSON -> APP
+   
+5. MEDICO PROGRAMA CITA:
+   APP -> POST /cita -> API -> INSERT citas -> BD -> API -> JSON -> APP
+
+================================================================================
+FIN DEL ANALISIS
+================================================================================
+
+Este documento contiene toda la información necesaria para entender y replicar
+el proyecto de ejemplo. Guarda este archivo para referencia futura.
+
+Para cualquier duda, consulta este documento o revisa el código fuente del
+proyecto en las carpetas Bd, Api y App.
+
